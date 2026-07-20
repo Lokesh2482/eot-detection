@@ -22,6 +22,8 @@ Note: Latency on unseen test conversations may be higher than the values reporte
 
 ## Repository Structure
 
+## Repository Structure
+
 ```text
 .
 ├── eot_data/
@@ -37,22 +39,27 @@ Note: Latency on unseen test conversations may be higher than the values reporte
 │
 ├── starter/
 │   └── starter/
-│       ├── features.py                 # 56 causal acoustic features
+│       ├── baseline.py                 # Silence-only baseline
+│       ├── combine_predictions.py      # Utility to merge English & Hindi predictions
 │       ├── ensemble.py                 # From-scratch NumPy randomized tree ensemble
+│       ├── features.py                 # 56 causal acoustic feature extractor
+│       ├── find_worst_errors.py        # Error analysis utility
 │       ├── train.py                    # Grouped cross-validation & final training
 │       ├── predict.py                  # Inference pipeline (no retraining)
-│       ├── baseline.py                 # Silence-only baseline
 │       ├── score.py                    # Official evaluation script
-│       ├── model.pkl                   # Final trained model
+│       ├── model.pkl                   # Final multilingual model
+│       ├── model_hindi_only.pkl        # Hindi-only experimental model
 │       ├── predictions_english.csv     # English predictions
 │       ├── predictions_hindi.csv       # Hindi predictions
 │       ├── predictions.csv             # Combined multilingual predictions
-│       ├── RUNLOG.md                   # Training log & experiments
-│       ├── NOTES.md                    # Design decisions & future work
-│       └── SUMMARY.html                # Project summary
+│       ├── oof_*.csv                   # Out-of-fold predictions from validation experiments
+│       ├── RUNLOG.md                   # Experiment log
+│       ├── NOTES.md                    # Design choices, limitations & future work
+│       ├── SUMMARY.html                # Project summary
+│       ├── README.md                   # Project documentation
+│       └── .gitignore
 │
-├── .gitignore
-└── README.md
+└── eot_data.zip                        # Dataset archive
 ```
 
 ---
