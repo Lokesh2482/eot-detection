@@ -20,29 +20,40 @@ Mean response delay (ms) at ≤5% interrupted turns — lower is better.
 Note: Latency on unseen test conversations may be higher than the values reported above, as the model is expected to generalize to previously unseen speakers, recording conditions, and conversational patterns.
 ---
 
-## Repo structure
-starter/starter/ all code + required deliverables
-├── features.py 56 causal acoustic features (energy, pitch, spectral)
-├── ensemble.py from-scratch NumPy tree ensemble (shared by train/predict)
-├── train.py grouped cross-validation + final model training
-├── predict.py inference only, no retraining
-├── score.py official scorer (provided)
-├── baseline.py silence-only baseline (provided)
-├── model.pkl final trained model
-├── predictions_english.csv predictions on English data
-├── predictions_hindi.csv predictions on Hindi data
-├── predictions.csv combined predictions (both languages)
-├── RUNLOG.md experiment log with all scores
-├── NOTES.md model signal, failure modes, next steps
-└── SUMMARY.html full write-up — start here
+## Repository Structure
 
-eot_data/eot_data/ provided audio + labels
-├── english/
-│ ├── audio/ English WAV files
-│ ├── labels.csv pause annotations
-│ └── predictions.csv English predictions (required deliverable)
-└── hindi/
-
+```text
+.
+├── eot_data/
+│   └── eot_data/
+│       ├── english/
+│       │   ├── audio/                  # English audio (.wav) files
+│       │   ├── labels.csv              # Pause annotations
+│       │   └── predictions.csv         # English predictions
+│       └── hindi/
+│           ├── audio/                  # Hindi audio (.wav) files
+│           ├── labels.csv              # Pause annotations
+│           └── predictions.csv         # Hindi predictions
+│
+├── starter/
+│   └── starter/
+│       ├── features.py                 # 56 causal acoustic features
+│       ├── ensemble.py                 # From-scratch NumPy randomized tree ensemble
+│       ├── train.py                    # Grouped cross-validation & final training
+│       ├── predict.py                  # Inference pipeline (no retraining)
+│       ├── baseline.py                 # Silence-only baseline
+│       ├── score.py                    # Official evaluation script
+│       ├── model.pkl                   # Final trained model
+│       ├── predictions_english.csv     # English predictions
+│       ├── predictions_hindi.csv       # Hindi predictions
+│       ├── predictions.csv             # Combined multilingual predictions
+│       ├── RUNLOG.md                   # Training log & experiments
+│       ├── NOTES.md                    # Design decisions & future work
+│       └── SUMMARY.html                # Project summary
+│
+├── .gitignore
+└── README.md
+```
 
 ---
 
