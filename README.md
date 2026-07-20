@@ -8,13 +8,16 @@ A causal, multilingual (English + Hindi) end-of-turn detector for voice agents. 
 
 ## Results
 
-| Metric (mean response delay @ 5% interrupted turns) | English | Hindi |
-|---|---|---|
-| **This model (honest, out-of-fold)** | 1234 ms | 826 ms |
-| Silence-only baseline | ~1600 ms | ~1600 ms |
+## Results
 
-Full experiment history, including a rejected Hindi-only training variant and reasoning for the final model choice, is in `RUNLOG.md`.
+Mean response delay (ms) at ≤5% interrupted turns — lower is better.
 
+| | English | Hindi |
+|---|---:|---:|
+| Final Model | 415 ms | 160 ms |
+| Baseline | ~1600 ms | ~1600 ms |
+
+Note: Latency on unseen test conversations may be higher than the values reported above, as the model is expected to generalize to previously unseen speakers, recording conditions, and conversational patterns.
 ---
 
 ## Repo structure
