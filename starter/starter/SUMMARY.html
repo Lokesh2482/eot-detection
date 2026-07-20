@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>End-of-Turn Detection - Summary</title>
+<style>
+    body{font-family: Arial, sans-serif; max-width:900px; margin:auto; line-height:1.6; padding:30px; color:#222;}
+    h1,h2{color:#1f4e79;}
+    table{border-collapse:collapse; width:100%; margin:10px 0;}
+    th,td{border:1px solid #ccc; padding:8px; text-align:left;}
+    th{background:#f2f6fa;}
+    .note{background:#fff8e1; border-left:4px solid #f0ad4e; padding:10px 14px; margin:14px 0;}
+    .good{color:#1a7a1a;}
+    code{background:#f4f4f4; padding:1px 5px; border-radius:3px;}
+</style>
+</head>
+<body>
+
+<h1>End-of-Turn Detection - Submission Summary</h1>
+
+<h2>Overview</h2>
+<p>
+This submission detects end-of-turn from causal acoustic features only, using no pretrained
+models and CPU-only training/inference. It beats the silence-only baseline (~1600ms mean
+response delay at 5% interrupted turns) by a wide margin on both provided languages.
+</p>
+
+<h2>Approach</h2>
+<h3>1. Feature engineering (56 causal features)</h3>
+<ul>
+<li>Multi-scale energy: level, variability, slope, and start/end change over 5 trailing windows (0.1s-1.5s)</li>
+<li>Final-segment energy relative to the speaker's own recent baseline (median/IQR normalized)</li>
+<li>Active-speech run length and silence-since-last-speech</li>
+<li>Speaker-relative F0 (pitch) in semitones: slope, range, and deviation from the speaker's own trailing baseline, across the same multi-scale windows</li>
+<li>Voicing fraction and last-voiced-run timing</li>
+<li>Spectral centroid slope, flatness, flux, and zero-crossing rate over 0.5s/1.5s windows</li>
+</ul>
+<p>All features are computed strictly from audio before each pause's <code>pause_start</code> - never <code>pause_end</code> or any future audio. This was verified directly in the feature code.</p>
+
+<h3>2. Model</h3>
+<ul>
+<li>A randomized tree ensemble (ExtraTrees-style), implemented from scratch in NumPy - no scikit-learn/XGBoost/LightGBM/deep learning dependency for the model itself</li>
+<li>300 trees, max depth 6, class-balanced via sample weighting</li>
+<li>Turn-grouped 5-fold cross-validation during development, so no turn's pauses appear in both train and validation within a fold</li>
+<li>Trained on English + Hindi <b>combined</b>, since the hidden test set is "mostly Hindi" and shared prosodic signal was expected to generalize better than training on Hindi alone - this was tested directly (see Results) and confirmed</li>
+<li>Final model refit on all 496 available rows and saved as <code>model.pkl</code> for inference</li>
+</ul>
+
+<h3>3. Inference</h3>
+<p><code>predict.py --data_dir &lt;folder&gt; --out predictions.csv</code> loads the saved model and extracts features per pause - it performs no retraining, matching the requirement that it run on a previously unseen folder with the same schema.</p>
+
+<h2>Results</h2>
+
+<p><b>Out-of-fold (OOF) results</b> - the honest, leakage-free estimate of performance on unseen turns, and the number most predictive of hidden-test performance:</p>
+<table>
+<tr><th>Dataset</th><th>Mean Delay @ 5% cutoff</th><th>Interrupted Turns</th><th>AUC</th></tr>
+<tr><td>English</td><td class="good">1234 ms</td><td>5.0%</td><td>0.610</td></tr>
+<tr><td>Hindi</td><td class="good">826 ms</td><td>5.0%</td><td>0.659</td></tr>
+<tr><td>Silence-only baseline (reference)</td><td>~1600 ms</td><td>-</td><td>-</td></tr>
+</table>
+
+<div class="note">
+<b>Also reported - in-sample sanity check:</b> Running the saved <code>model.pkl</code> (fit on all 496 rows) via <code>predict.py</code> on the same English/Hindi folders it was trained on gives 415ms (English) and 160ms (Hindi) at 2-3% interrupted turns, with AUC 0.98-0.995. These numbers confirm the train &rarr; save &rarr; load &rarr; infer pipeline works correctly end-to-end, but since the model has already seen this exact data during training, they are not a fair estimate of performance on the hidden test set. The OOF numbers above are the ones that estimate hidden-test performance.
+</div>
+
+<h3>Multilingual training decision</h3>
+<table>
+<tr><th>Training data</th><th>Hindi OOF delay @ 5%</th><th>Hindi OOF AUC</th></tr>
+<tr><td>English + Hindi combined (chosen)</td><td class="good">826 ms</td><td>0.659</td></tr>
+<tr><td>Hindi only</td><td>850 ms</td><td>0.718</td></tr>
+</table>
+<p>The combined model was chosen for submission: it produces a lower operational delay on Hindi despite the Hindi-only model having higher raw AUC, likely because the combined model benefits from roughly double the training data for the tree ensemble, and the scorer optimizes a specific threshold/delay operating point rather than overall ranking quality.</p>
+
+<h2>What was done by the coding agent vs. by hand</h2>
+<ul>
+<li><b>Coding agent:</b> initial causal feature extraction module (energy/F0/spectral features across multiple windows), the turn-grouped cross-validation harness, the from-scratch NumPy tree ensemble (needed since scikit-learn was unavailable in the execution environment), and the predict.py inference script.</li>
+<li><b>Done by hand / directed:</b> restructuring the training script to train multilingually rather than per-language; running and interpreting the Hindi-only vs. combined comparison to make an evidence-based training decision rather than assuming multilingual training would win; separating shared model classes into <code>ensemble.py</code> to fix a pickle/import bug that broke <code>predict.py</code>; distinguishing and correctly labeling OOF vs. in-sample evaluation numbers rather than reporting only the more flattering in-sample score; feature importance review to identify near-zero-value features (<code>context_s</code>, <code>context_is_short</code>, <code>f0_reference_available</code>) as pruning candidates.</li>
+</ul>
+
+<h2>Why this beats the status quo</h2>
+<p>
+The silence-only baseline (naive VAD-style endpointing) waits a fixed timeout regardless of what
+was actually said, averaging ~1600ms at a 5% interruption budget. This system instead reads the
+trajectory of energy, pitch, and spectral shape in the last 0.1-1.5 seconds of speech to predict
+turn completion, cutting the honest (OOF) mean response delay to 826ms on Hindi and 1234ms on
+English - roughly a 23-48% reduction in how long the agent keeps users waiting, at the same
+5% false-interruption budget.
+</p>
+
+<h2>Competition Compliance</h2>
+<ul>
+<li>Strictly causal (verified in code): only audio before <code>pause_start</code> is used</li>
+<li>CPU-only training and inference</li>
+<li>No pretrained models or downloaded weights</li>
+<li>No external datasets</li>
+<li>Allowed libraries only: NumPy (model and features), Python stdlib (wave, csv)</li>
+<li>predict.py performs inference only, no retraining</li>
+</ul>
+
+</body>
+</html>
